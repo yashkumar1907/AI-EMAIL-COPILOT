@@ -579,96 +579,194 @@ button:disabled {
     background: #1d4ed8;
 }
 
-.reply-card {
+/* =========================================================
+   REPLY COMPOSER
+   ========================================================= */
+
+   .reply-card {
     display: none;
     animation: fadeIn 0.25s ease;
-    margin-top: 25px;
-    max-width: 720px;
-    background: #fff;
+
+    margin-top: 16px;
+    width: 100%;
+    max-width: none;
+
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
     border-radius: 18px;
-    padding: 24px;
-    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.08);
+
+    padding: 20px;
+
+    box-shadow:
+        0 8px 25px rgba(15, 23, 42, 0.08),
+        0 2px 6px rgba(15, 23, 42, 0.04);
 }
+
+
+/* ================= REPLY HEADER ================= */
 
 .reply-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px;
+
+    margin-bottom: 14px;
 }
 
 .reply-header h3 {
-    font-size: 22px;
+    font-size: 19px;
+    font-weight: 700;
     color: #1f2937;
 }
 
+
+/* Close button */
+
 .reply-header button {
+    width: 34px;
+    height: 34px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
     border: none;
-    background: #f3f4f6;
-    width: 38px;
-    height: 38px;
     border-radius: 50%;
+
+    background: #f1f5f9;
+    color: #475569;
+
     cursor: pointer;
-    font-size: 18px;
+
+    font-size: 17px;
+
+    transition: all 0.2s ease;
 }
 
 .reply-header button:hover {
-    background: #e5e7eb;
+    background: #fee2e2;
+    color: #dc2626;
+
+    transform: rotate(90deg);
 }
+
+
+/* ================= REPLY TEXTAREA ================= */
 
 .reply-card textarea {
     width: 100%;
-    min-height: 180px;
-    border: 1px solid #d9dce3;
-    border-radius: 14px;
-    padding: 18px;
+
+    min-height: 150px;
+    max-height: 280px;
+
+    padding: 15px 16px;
+
+    border: 1px solid #dbe3ef;
+    border-radius: 12px;
+
     resize: vertical;
-    font-size: 15px;
-    line-height: 1.6;
+
     font-family: "Inter", sans-serif;
+    font-size: 14px;
+    line-height: 1.65;
+
+    color: #1f2937;
+    background: #f8fafc;
+
     outline: none;
-    background: #fcfdff;
+
+    transition: all 0.2s ease;
+}
+
+.reply-card textarea::placeholder {
+    color: #94a3b8;
+}
+
+.reply-card textarea:hover {
+    border-color: #cbd5e1;
+    background: #ffffff;
 }
 
 .reply-card textarea:focus {
     border-color: #2563eb;
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    background: #ffffff;
+
+    box-shadow:
+        0 0 0 3px rgba(37, 99, 235, 0.10);
 }
+
+
+/* ================= REPLY ACTIONS ================= */
 
 .reply-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 12px;
-    margin-top: 18px;
+    align-items: center;
+
+    gap: 10px;
+
+    margin-top: 14px;
 }
 
-.primary-btn {
-    background: #2563eb;
-    color: #fff;
-    border: none;
-    border-radius: 12px;
-    padding: 12px 24px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: 0.25s;
+
+/* Cancel */
+
+.reply-actions .secondary-btn {
+    padding: 10px 18px;
+
+    background: #f1f5f9;
+    color: #475569;
+
+    border: 1px solid #e2e8f0;
 }
 
-.primary-btn:hover {
-    background: #1d4ed8;
-    transform: translateY(-2px);
+.reply-actions .secondary-btn:hover {
+    background: #e2e8f0;
+    color: #1f2937;
 }
 
-.secondary-btn {
-    background: #eef2ff;
-    color: #2563eb;
-    border: none;
-    padding: 12px 22px;
+
+/* Send */
+
+.reply-actions .primary-btn {
+    padding: 10px 20px;
+
     border-radius: 10px;
-    cursor: pointer;
 }
 
-.secondary-btn:hover {
-    background: #dbeafe;
+
+/* ================= MOBILE ================= */
+
+@media (max-width: 768px) {
+
+    .reply-card {
+        padding: 16px;
+        border-radius: 16px;
+    }
+
+    .reply-card textarea {
+        min-height: 140px;
+    }
+
+    .reply-actions {
+        flex-direction: row;
+    }
+
+    .reply-actions button {
+        width: auto;
+    }
+}
+
+
+@media (max-width: 480px) {
+
+    .reply-actions {
+        flex-direction: column-reverse;
+    }
+
+    .reply-actions button {
+        width: 100%;
+    }
 }
 
 
