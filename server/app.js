@@ -12,6 +12,18 @@ const aiRoutes = require("./routes/aiRoutes");
 const app = express();
 
 // --------------------------------------------------
+// Environment
+// --------------------------------------------------
+
+const isProduction = process.env.NODE_ENV === "production";
+
+// Render runs the app behind a reverse proxy.
+// Required for secure session cookies in production.
+if (isProduction) {
+    app.set("trust proxy", 1);
+}
+
+// --------------------------------------------------
 // Middleware
 // --------------------------------------------------
 
@@ -56,16 +68,17 @@ app.use(
 // --------------------------------------------------
 
 if (!process.env.SESSION_SECRET) {
-    throw new Error("SESSION_SECRET is not defined in environment variables");
+    throw new Error(
+        "SESSION_SECRET is not defined in environment variables"
+    );
 }
-
-const isProduction = process.env.NODE_ENV === "production";
 
 app.use(
     session({
         secret: process.env.SESSION_SECRET,
         resave: false,
         saveUninitialized: false,
+
         cookie: {
             secure: isProduction,
             httpOnly: true,
