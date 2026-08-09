@@ -1032,3 +1032,172 @@ button:disabled {
     cursor: not-allowed;
     transform: none !important;
 }
+
+
+
+/* =========================================================
+   EMAIL VIEWER UI IMPROVEMENT
+   Gives the email body more vertical space
+   ========================================================= */
+
+   @media (min-width: 769px) {
+
+    /* Give the main email viewer slightly more usable space */
+    .content {
+        padding: 24px;
+    }
+
+    /* Slightly reduce unnecessary padding */
+    .email-card {
+        padding: 26px;
+        min-height: 0;
+    }
+
+    /* Reduce space above sender */
+    .mail-top {
+        margin-bottom: 10px;
+    }
+
+    .sender-card {
+        margin: 12px 0;
+    }
+
+    /* Make the actual email content the main flexible area */
+    #emailBody {
+        flex: 1;
+        min-height: 180px;
+        margin-top: 12px;
+        padding-right: 10px;
+        overflow-y: auto;
+        line-height: 1.75;
+    }
+
+    /* Compact the controls below the email */
+    .reply-area {
+        margin-top: 14px;
+        flex-shrink: 0;
+
+        display: grid;
+        grid-template-columns: 1fr auto;
+        column-gap: 10px;
+        row-gap: 8px;
+        align-items: center;
+    }
+
+    /* Put all AI buttons in one row */
+    .ai-buttons {
+        grid-column: 1 / -1;
+        margin-bottom: 0;
+    }
+
+    .ai-actions {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        margin: 8px 0 10px;
+    }
+
+    .ai-btn {
+        min-width: 0;
+        width: 100%;
+        padding: 11px 8px;
+        font-size: 13px;
+        white-space: nowrap;
+    }
+
+    /* Tone selector and Reply button share one row */
+    #toneSelect {
+        width: 240px;
+        margin-bottom: 0;
+    }
+
+    #replyBtn {
+        white-space: nowrap;
+        padding: 12px 22px;
+    }
+
+    /* Reply editor should remain below the compact controls */
+    .reply-card {
+        grid-column: 1 / -1;
+        margin-top: 12px;
+    }
+}
+
+
+/* =========================================================
+   BETTER EMAIL CONTENT FORMATTING
+   ========================================================= */
+
+#emailBody {
+    scrollbar-width: thin;
+}
+
+#emailBody::-webkit-scrollbar {
+    width: 7px;
+}
+
+#emailBody::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+#emailBody::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+
+/* Improve paragraphs inside emails */
+#emailBody p {
+    margin: 10px 0;
+}
+
+
+/* Make email images fit nicely */
+#emailBody img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 12px auto;
+}
+
+
+/* =========================================================
+   DESKTOP EMAIL SUBJECT
+   ========================================================= */
+
+@media (min-width: 769px) {
+
+    #emailSubject {
+        font-size: 28px;
+        line-height: 1.25;
+        margin-bottom: 0;
+    }
+
+    .sender-avatar {
+        width: 52px;
+        height: 52px;
+        font-size: 20px;
+    }
+}
+
+
+/* =========================================================
+   MOBILE SAFETY
+   Keep your existing mobile layout unchanged
+   ========================================================= */
+
+@media (max-width: 768px) {
+
+    #emailBody {
+        min-height: 300px;
+    }
+
+    .ai-actions {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .ai-btn {
+        width: 100%;
+    }
+}
