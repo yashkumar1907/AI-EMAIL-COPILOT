@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>AI Email Copilot</title>
+
+    <link rel="stylesheet" href="./css/dashboard.css">
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header class="topbar">
+
+        <div class="logo">
+            <div class="logo-icon">✉️</div>
+
+            <div>
+                <h2>AI Email Copilot</h2>
+                <small>AI-Powered Email Assistant</small>
+            </div>
+        </div>
+
+        <div class="top-actions">
+
+            <input
+                type="text"
+                id="searchInput"
+                class="search-box"
+                placeholder="Search emails..."
+                aria-label="Search Emails"
+            >
+
+            <div class="profile-card">
+
+                <img
+                    id="profileImage"
+                    src="https://ui-avatars.com/api/?name=User"
+                    alt="Profile"
+                >
+
+                <div class="profile-info">
+                    <h4 id="profileName">Loading...</h4>
+                    <small id="profileEmail"></small>
+                </div>
+
+                <button
+                    id="logoutBtn"
+                    class="logout-btn"
+                    type="button"
+                    aria-label="Logout"
+                >
+                    🚪 Logout
+                </button>
+
+            </div>
+
+        </div>
+
+    </header>
+
+
+    <div class="container">
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+
+            <div class="sidebar-header">
+
+                <div class="sidebar-title">
+                    <h3>📥 Inbox</h3>
+
+                    <small id="emailCount">
+                        0 Emails
+                    </small>
+                </div>
+
+                <button
+                    id="composeBtn"
+                    class="compose-btn"
+                    type="button"
+                    aria-label="Compose Email"
+                >
+                    ➕ Compose
+                </button>
+
+            </div>
+
+            <div id="emailList"></div>
+
+        </aside>
+
+
+        <!-- Main Email Content -->
+        <main class="content">
+
+            <div class="email-card">
+
+                <div class="mail-top">
+
+                    <h1 id="emailSubject">
+                        Select an Email
+                    </h1>
+
+                </div>
+
+
+                <div class="sender-card">
+
+                    <div
+                        class="sender-avatar"
+                        id="senderAvatar"
+                    >
+                        A
+                    </div>
+
+                    <div>
+                        <h3 id="emailFrom">Sender</h3>
+                        <small id="emailDate">Today</small>
+                    </div>
+
+                </div>
+
+                <hr>
+
+
+                <div id="emailBody">
+
+                    <div class="empty-state">
+
+                        <div class="empty-icon">
+                            📨
+                        </div>
+
+                        <h2>Welcome to AI Email Copilot</h2>
+
+                        <p>
+                            Select an email from the left to start reading.
+                        </p>
+
+                        <ul class="welcome-list">
+                            <li>📝 Summarize Emails</li>
+                            <li>💬 Draft AI Replies</li>
+                            <li>🎯 Improve Tone</li>
+                            <li>🌍 Translate Emails</li>
+                            <li>📋 Extract Action Items</li>
+                        </ul>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Reply Area -->
+                <div class="reply-area">
+
+                    <div class="ai-buttons">
+
+                        <div class="ai-actions">
+
+                            <button
+                                id="summarizeEmailBtn"
+                                class="ai-btn"
+                                type="button"
+                            >
+                                📝 Summarize
+                            </button>
+
+                            <button
+                                id="draftReplyBtn"
+                                class="ai-btn"
+                                type="button"
+                            >
+                                💬 Draft Reply
+                            </button>
+
+                            <button
+                                id="translateEmailBtn"
+                                class="ai-btn"
+                                type="button"
+                            >
+                                🌍 Translate
+                            </button>
+
+                            <button
+                                id="improveToneBtn"
+                                class="ai-btn"
+                                type="button"
+                            >
+                                🎯 Improve Tone
+                            </button>
+
+                        </div>
+
+                    </div>
+
+
+                    <select id="toneSelect" aria-label="Select email tone">
+
+                        <option>Professional</option>
+                        <option>Friendly</option>
+                        <option>Formal</option>
+                        <option>Casual</option>
+                        <option>Short</option>
+                        <option>Polite</option>
+                        <option>Confident</option>
+                        <option>Persuasive</option>
+
+                    </select>
+
+
+                    <button
+                        id="replyBtn"
+                        class="primary-btn"
+                        type="button"
+                    >
+                        ✉ Reply
+                    </button>
+
+
+                    <!-- Reply Card -->
+                    <div
+                        id="replySection"
+                        class="reply-card"
+                    >
+
+                        <div class="reply-header">
+
+                            <h3>Compose Reply</h3>
+
+                            <button
+                                id="closeReply"
+                                type="button"
+                                aria-label="Close reply"
+                            >
+                                ✕
+                            </button>
+
+                        </div>
+
+                        <textarea
+                            id="replyText"
+                            placeholder="Write your reply..."
+                        ></textarea>
+
+                        <div class="reply-actions">
+
+                            <button
+                                id="cancelReply"
+                                class="secondary-btn"
+                                type="button"
+                            >
+                                Cancel
+                            </button>
+
+                            <button
+                                id="sendReplyBtn"
+                                class="primary-btn"
+                                type="button"
+                            >
+                                ➜ Send Reply
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </main>
+
+
+        <!-- AI Panel -->
+        <aside class="ai-panel">
+
+            <div class="ai-title">
+
+                <h3>✨ AI Copilot</h3>
+
+                <span class="ai-status">
+                    ● Ready
+                </span>
+
+            </div>
+
+
+            <!-- Summary -->
+            <div class="ai-card">
+
+                <h4>📄 Email Summary</h4>
+
+                <div
+                    id="summaryText"
+                    class="ai-result"
+                >
+                    Select an email and click Summarize.
+                </div>
+
+            </div>
+
+
+            <!-- Action Items -->
+            <div class="ai-card">
+
+                <h4>✅ Action Items</h4>
+
+                <div
+                    id="actionItems"
+                    class="ai-result"
+                >
+                    AI will extract important tasks here.
+                </div>
+
+            </div>
+
+
+            <!-- Draft Reply -->
+            <div class="ai-card">
+
+                <h4>🤖 AI Draft Reply</h4>
+
+                <div
+                    id="replySuggestion"
+                    class="ai-result"
+                >
+                    AI reply will appear here.
+                </div>
+
+            </div>
+
+
+            <button
+                id="copyReplyBtn"
+                class="secondary-btn"
+                type="button"
+            >
+                📋 Copy Reply
+            </button>
+
+
+            <!-- Translation -->
+            <div class="ai-card">
+
+                <h4>🌍 Translation</h4>
+
+                <div
+                    id="translationResult"
+                    class="ai-result"
+                >
+                    AI translation will appear here.
+                </div>
+
+            </div>
+
+
+            <!-- Improved Tone -->
+            <div class="ai-card">
+
+                <h4>🎯 Improved Tone</h4>
+
+                <div
+                    id="toneResult"
+                    class="ai-result"
+                >
+                    Improved email will appear here.
+                </div>
+
+            </div>
+
+
+            <!-- AI Loading -->
+            <div
+                id="aiLoading"
+                class="ai-loading"
+            >
+                ✨ AI is thinking...
+            </div>
+
+        </aside>
+
+    </div>
+
+
+    <!-- Compose Modal -->
+    <div
+        id="composeModal"
+        class="modal"
+    >
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h2>✉ AI Compose Email</h2>
+
+                <button
+                    id="closeCompose"
+                    type="button"
+                    aria-label="Close compose window"
+                >
+                    ✕
+                </button>
+
+            </div>
+
+
+            <input
+                type="email"
+                id="composeTo"
+                placeholder="Recipient Email"
+            >
+
+
+            <input
+                type="text"
+                id="composeSubject"
+                placeholder="Subject"
+            >
+
+
+            <textarea
+                id="composePrompt"
+                rows="5"
+                placeholder="Describe what email you want AI to write..."
+            ></textarea>
+
+
+            <button
+                id="generateComposeBtn"
+                class="primary-btn"
+                type="button"
+            >
+                ✨ Generate Email
+            </button>
+
+
+            <textarea
+                id="composeBody"
+                rows="12"
+                placeholder="Generated email will appear here..."
+            ></textarea>
+
+
+            <button
+                id="sendComposeBtn"
+                class="primary-btn"
+                type="button"
+            >
+                📤 Send Email
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- Toast -->
+    <div
+        id="toast"
+        class="toast"
+    ></div>
+
+
+    <!-- Loading Overlay -->
+    <div
+        id="loadingOverlay"
+        class="loading-overlay"
+    >
+
+        <div class="loader"></div>
+
+        <p>AI is thinking...</p>
+
+    </div>
+
+
+    <script src="./js/dashboard.js"></script>
+
+</body>
+
+</html>
