@@ -11,7 +11,7 @@ const CLIENT_BASE_URL =
     window.location.hostname === "localhost" ||
     window.location.hostname === "127.0.0.1"
         ? `${window.location.origin}/client`
-        : "YOUR-FRONTEND-URL";
+        : "https://ai-email-copilot-frontend.onrender.com";
 
 
 // ==================================================
