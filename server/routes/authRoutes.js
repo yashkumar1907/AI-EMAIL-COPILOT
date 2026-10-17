@@ -21,6 +21,7 @@ router.get(
             "https://www.googleapis.com/auth/gmail.readonly",
             "https://www.googleapis.com/auth/gmail.send",
         ],
+        state: true,
         accessType: "offline",
         prompt: "consent",
     })
@@ -37,7 +38,11 @@ router.get(
         session: true,
     }),
     (req, res) => {
-        const clientURL = process.env.CLIENT_URL;
+        const isProduction = process.env.NODE_ENV === "production";
+        const clientURL = isProduction
+            ? process.env.CLIENT_URL
+            : process.env.LOCAL_CLIENT_URL ||
+              "http://localhost:5501/client";
 
         if (!clientURL) {
             return res.status(500).json({
@@ -46,7 +51,12 @@ router.get(
             });
         }
 
-        res.redirect(`${clientURL}/dashboard.html`);
+        const dashboardURL = new URL(
+            "dashboard.html",
+            `${clientURL.replace(/\/+$/, "")}/`
+        );
+
+        res.redirect(dashboardURL.toString());
     }
 );
 

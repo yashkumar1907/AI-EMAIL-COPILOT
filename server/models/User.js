@@ -31,11 +31,25 @@ const userSchema = new mongoose.Schema(
         accessToken: {
             type: String,
             default: null,
+            select: false,
         },
 
         refreshToken: {
             type: String,
             default: null,
+            select: false,
+        },
+
+        accessTokenEncrypted: {
+            type: String,
+            default: null,
+            select: false,
+        },
+
+        refreshTokenEncrypted: {
+            type: String,
+            default: null,
+            select: false,
         },
     },
     {

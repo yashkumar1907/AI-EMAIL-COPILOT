@@ -1,4 +1,86 @@
 const { google } = require("googleapis");
+const { readGoogleTokens, writeGoogleTokens } = require("./userTokenService");
+
+const getOAuthClient = () => {
+    const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_CALLBACK_URL } = process.env;
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_CALLBACK_URL) {
+        const error = new Error("Google OAuth is not configured on the server.");
+        error.statusCode = 503;
+        throw error;
+    }
+
+    return new google.auth.OAuth2(
+        GOOGLE_CLIENT_ID,
+        GOOGLE_CLIENT_SECRET,
+        GOOGLE_CALLBACK_URL
+    );
+};
+
+const validateEmailFields = (to, subject, message) => {
+    const error = new Error("A valid recipient, subject, and message are required.");
+    error.statusCode = 400;
+
+    const recipient = typeof to === "string" ? to.trim() : "";
+    const angleAddress = recipient.match(/^[^<>\r\n]*<([^<>\s]+)>$/);
+    const address = angleAddress ? angleAddress[1] : recipient;
+
+    if (!recipient || recipient.length > 320 || /[\r\n]/.test(recipient) ||
+        !/^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(address)) {
+        throw error;
+    }
+    if (typeof subject !== "string" || !subject.trim() || subject.length > 998 || /[\r\n]/.test(subject)) {
+        throw error;
+    }
+    if (typeof message !== "string" || !message.trim() || message.length > 100000) {
+        throw error;
+    }
+};
+
+const mapGmailError = (error, fallbackMessage) => {
+    if (error.statusCode) return error;
+
+    const candidate = error.response?.status || error.status || error.code;
+    const status = Number(candidate);
+    const mapped = new Error(
+        status === 401
+            ? "Gmail authorization expired. Please sign in with Google again."
+            : status === 403
+              ? "Gmail denied this request. Check the account permissions and Gmail API access."
+              : status === 429
+                ? "Gmail rate limit reached. Please try again shortly."
+                : fallbackMessage
+    );
+    mapped.statusCode = status === 401 || status === 403 || status === 429
+        ? status
+        : status === 503 || status === 504
+          ? 503
+          : 502;
+    return mapped;
+};
+
+const validateReplyHeaders = (inReplyTo, references) => {
+    const error = new Error("This email is missing valid reply headers. Refresh the message and try again.");
+    error.statusCode = 400;
+
+    if (
+        typeof inReplyTo !== "string" ||
+        inReplyTo.length > 998 ||
+        !/^<[^<>\s]+>$/.test(inReplyTo.trim())
+    ) {
+        throw error;
+    }
+
+    const safeReferences = typeof references === "string" ? references.trim() : "";
+    if (
+        safeReferences.length > 8000 ||
+        /[\r\n]/.test(safeReferences) ||
+        (safeReferences && !/^(?:<[^<>\s]+>\s*)+$/.test(safeReferences))
+    ) {
+        throw error;
+    }
+
+    return [safeReferences, inReplyTo.trim()].filter(Boolean).join(" ");
+};
 
 // --------------------------------------------------
 // Create Gmail OAuth Client
@@ -11,7 +93,8 @@ const createOAuthClient = async (user) => {
         throw error;
     }
 
-    if (!user.accessToken && !user.refreshToken) {
+    const savedTokens = readGoogleTokens(user);
+    if (!savedTokens.accessToken && !savedTokens.refreshToken) {
         const error = new Error(
             "Gmail authorization is missing. Please log in with Google again."
         );
@@ -19,23 +102,20 @@ const createOAuthClient = async (user) => {
         throw error;
     }
 
-    const oauth2Client = new google.auth.OAuth2();
+    const oauth2Client = getOAuthClient();
 
     oauth2Client.setCredentials({
-        access_token: user.accessToken || undefined,
-        refresh_token: user.refreshToken || undefined,
+        access_token: savedTokens.accessToken || undefined,
+        refresh_token: savedTokens.refreshToken || undefined,
     });
 
     // Save newly generated tokens when Google refreshes them.
     oauth2Client.on("tokens", async (tokens) => {
         try {
-            if (tokens.access_token) {
-                user.accessToken = tokens.access_token;
-            }
-
-            if (tokens.refresh_token) {
-                user.refreshToken = tokens.refresh_token;
-            }
+            writeGoogleTokens(user, {
+                ...(tokens.access_token ? { accessToken: tokens.access_token } : {}),
+                ...(tokens.refresh_token ? { refreshToken: tokens.refresh_token } : {}),
+            });
 
             await user.save();
         } catch (error) {
@@ -120,22 +200,14 @@ const getRecentEmails = async (user) => {
 
         return emails;
     } catch (error) {
-        console.error(
-            "❌ Gmail Fetch Emails Error:",
-            error.message
+        console.error("Gmail fetch failed", {
+            status: error.response?.status || error.status || null,
+        });
+
+        throw mapGmailError(
+            error,
+            "Unable to access Gmail. Please try again shortly."
         );
-
-        if (error.statusCode) {
-            throw error;
-        }
-
-        const gmailError = new Error(
-            "Unable to access Gmail. Please sign in with Google again if the problem continues."
-        );
-
-        gmailError.statusCode = 401;
-
-        throw gmailError;
     }
 };
 
@@ -161,28 +233,17 @@ const getEmailById = async (user, emailId) => {
 
         return email.data;
     } catch (error) {
-        console.error(
-            "❌ Gmail Get Email Error:",
-            error.message
-        );
+        console.error("Gmail message retrieval failed", {
+            status: error.response?.status || error.status || null,
+        });
 
-        if (error.code === 404) {
+        if (error.code === 404 || error.response?.status === 404) {
             const notFoundError = new Error("Email not found.");
             notFoundError.statusCode = 404;
             throw notFoundError;
         }
 
-        if (error.statusCode) {
-            throw error;
-        }
-
-        const gmailError = new Error(
-            "Unable to retrieve the email."
-        );
-
-        gmailError.statusCode = 500;
-
-        throw gmailError;
+        throw mapGmailError(error, "Unable to retrieve the email.");
     }
 };
 
@@ -195,11 +256,13 @@ const replyToEmail = async (
     threadId,
     to,
     subject,
-    message
+    message,
+    inReplyTo,
+    references
 ) => {
-    if (!threadId || !to || !subject || !message) {
+    if (typeof threadId !== "string" || !threadId.trim()) {
         const error = new Error(
-            "Thread ID, recipient, subject, and message are required."
+            "Thread ID is required."
         );
 
         error.statusCode = 400;
@@ -207,12 +270,18 @@ const replyToEmail = async (
         throw error;
     }
 
+    validateEmailFields(to, subject, message);
+    const replyReferences = validateReplyHeaders(inReplyTo, references);
+
     try {
         const gmail = await getGmailClient(user);
 
+        const safeSubject = subject.trim();
         const emailLines = [
-            `To: ${to}`,
-            `Subject: ${subject.startsWith("Re:") ? subject : `Re: ${subject}`}`,
+            `To: ${to.trim()}`,
+            `Subject: ${safeSubject}`,
+            `In-Reply-To: ${inReplyTo.trim()}`,
+            `References: ${replyReferences}`,
             "Content-Type: text/plain; charset=utf-8",
             "",
             message,
@@ -236,22 +305,10 @@ const replyToEmail = async (
 
         return true;
     } catch (error) {
-        console.error(
-            "❌ Gmail Reply Error:",
-            error.message
-        );
-
-        if (error.statusCode) {
-            throw error;
-        }
-
-        const gmailError = new Error(
-            "Unable to send the reply."
-        );
-
-        gmailError.statusCode = 500;
-
-        throw gmailError;
+        console.error("Gmail reply failed", {
+            status: error.response?.status || error.status || null,
+        });
+        throw mapGmailError(error, "Unable to send the reply.");
     }
 };
 
@@ -265,22 +322,14 @@ const sendEmail = async (
     subject,
     message
 ) => {
-    if (!to || !subject || !message) {
-        const error = new Error(
-            "Recipient, subject, and message are required."
-        );
-
-        error.statusCode = 400;
-
-        throw error;
-    }
+    validateEmailFields(to, subject, message);
 
     try {
         const gmail = await getGmailClient(user);
 
         const emailLines = [
-            `To: ${to}`,
-            `Subject: ${subject}`,
+            `To: ${to.trim()}`,
+            `Subject: ${subject.trim()}`,
             "Content-Type: text/plain; charset=utf-8",
             "",
             message,
@@ -303,22 +352,10 @@ const sendEmail = async (
 
         return true;
     } catch (error) {
-        console.error(
-            "❌ Gmail Send Email Error:",
-            error.message
-        );
-
-        if (error.statusCode) {
-            throw error;
-        }
-
-        const gmailError = new Error(
-            "Unable to send the email."
-        );
-
-        gmailError.statusCode = 500;
-
-        throw gmailError;
+        console.error("Gmail send failed", {
+            status: error.response?.status || error.status || null,
+        });
+        throw mapGmailError(error, "Unable to send the email.");
     }
 };
 

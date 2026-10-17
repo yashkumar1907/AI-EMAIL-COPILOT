@@ -1,5 +1,5 @@
 const express = require("express");
-const passport = require("passport");
+const requireAuth = require("../middleware/requireAuth");
 
 const {
     getEmails,
@@ -16,7 +16,7 @@ const router = express.Router();
 
 router.get(
     "/emails",
-    passport.authenticate("session"),
+    requireAuth,
     getEmails
 );
 
@@ -26,7 +26,7 @@ router.get(
 
 router.get(
     "/email/:id",
-    passport.authenticate("session"),
+    requireAuth,
     getEmail
 );
 
@@ -36,7 +36,7 @@ router.get(
 
 router.post(
     "/reply",
-    passport.authenticate("session"),
+    requireAuth,
     sendReply
 );
 
@@ -46,7 +46,7 @@ router.post(
 
 router.post(
     "/send",
-    passport.authenticate("session"),
+    requireAuth,
     sendEmail
 );
 

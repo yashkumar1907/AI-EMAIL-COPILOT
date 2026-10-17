@@ -2,6 +2,11 @@ const express = require("express");
 const session = require("express-session");
 const passport = require("passport");
 const cors = require("cors");
+const {
+    createSessionOptions,
+    createSessionStore,
+} = require("./config/session");
+const { validateTokenEncryptionKey } = require("./config/tokenCrypto");
 
 require("./config/passport");
 
@@ -27,20 +32,41 @@ if (isProduction) {
 // Middleware
 // --------------------------------------------------
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
 // --------------------------------------------------
 // CORS
 // --------------------------------------------------
 
-const allowedOrigins = [
-    process.env.CLIENT_URL,
-    "http://localhost:5500",
-    "http://127.0.0.1:5500",
-    "http://localhost:5504",
-    "http://127.0.0.1:5504",
-].filter(Boolean);
+const getOrigin = (url) => {
+    if (!url) {
+        return null;
+    }
+
+    try {
+        return new URL(url).origin;
+    } catch {
+        return null;
+    }
+};
+
+const allowedOrigins = isProduction
+    ? [getOrigin(process.env.CLIENT_URL)].filter(Boolean)
+    : [
+          getOrigin(process.env.CLIENT_URL),
+          getOrigin(process.env.LOCAL_CLIENT_URL || "http://localhost:5501/client"),
+          "http://localhost:5500",
+          "http://127.0.0.1:5500",
+          "http://localhost:5501",
+          "http://127.0.0.1:5501",
+          "http://localhost:5504",
+          "http://127.0.0.1:5504",
+      ].filter(Boolean);
+
+if (isProduction && !allowedOrigins.length) {
+    throw new Error("CLIENT_URL must be configured in production.");
+}
 
 app.use(
     cors({
@@ -55,13 +81,24 @@ app.use(
                 return callback(null, true);
             }
 
-            return callback(
-                new Error(`CORS policy: Origin ${origin} is not allowed`)
-            );
+            return callback(new Error("CORS policy: Origin is not allowed"));
         },
         credentials: true,
     })
 );
+
+// CORS controls whether browser code can read a response; this Origin check
+// also blocks cross-site form submissions to cookie-authenticated endpoints.
+app.use((req, res, next) => {
+    const origin = req.get("Origin");
+    if (origin && !allowedOrigins.includes(origin)) {
+        return res.status(403).json({
+            success: false,
+            message: "Origin is not allowed.",
+        });
+    }
+    next();
+});
 
 // --------------------------------------------------
 // Session
@@ -73,19 +110,16 @@ if (!process.env.SESSION_SECRET) {
     );
 }
 
-app.use(
-    session({
-        secret: process.env.SESSION_SECRET,
-        resave: false,
-        saveUninitialized: false,
+validateTokenEncryptionKey();
 
-        cookie: {
-            secure: isProduction,
-            httpOnly: true,
-            sameSite: isProduction ? "none" : "lax",
-            maxAge: 24 * 60 * 60 * 1000,
-        },
-    })
+app.use(
+    session(
+        createSessionOptions({
+            secret: process.env.SESSION_SECRET,
+            isProduction,
+            store: createSessionStore(),
+        })
+    )
 );
 
 // --------------------------------------------------

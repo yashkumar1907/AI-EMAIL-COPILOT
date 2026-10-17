@@ -3,29 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>AI Email Copilot - Login</title>
-
+    <meta name="theme-color" content="#f5f6f8">
+    <title>Sign in · Mailmind</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/login.css">
 </head>
-
 <body>
-    <main class="container">
-        <div class="card">
-            <h1>AI Email Copilot</h1>
-
-            <p>Your intelligent Gmail assistant</p>
-
-            <button
-                id="googleLogin"
-                type="button"
-                aria-label="Continue with Google"
-            >
-                Continue with Google
-            </button>
-        </div>
+    <main class="auth-shell">
+        <section class="auth-story" aria-label="About Mailmind">
+            <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6.5h16v11H4z"/><path d="m4.5 7 7.5 6 7.5-6"/></svg></span><strong>mailmind</strong></a>
+            <div class="story-copy"><span class="eyebrow">MAKE SPACE FOR WHAT MATTERS</span><h1>Good email days<br>start with <em>clarity.</em></h1><p>Meet the thoughtful AI assistant that helps you understand, write, and move through your inbox with ease.</p></div>
+            <p class="story-foot">A calmer inbox, one message at a time.</p>
+        </section>
+        <section class="auth-main" aria-labelledby="welcomeTitle">
+            <div class="mobile-brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6.5h16v11H4z"/><path d="m4.5 7 7.5 6 7.5-6"/></svg></span><strong>mailmind</strong></div>
+            <div class="auth-card"><div class="auth-icon" aria-hidden="true">✳</div><span class="eyebrow">YOUR AI EMAIL WORKSPACE</span><h2 id="welcomeTitle">Welcome to Mailmind</h2><p>Sign in with Google to connect your inbox and get started.</p>
+                <button id="googleLogin" type="button" aria-label="Continue with Google"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" transform="translate(0 4) scale(.9)"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.72 7.18l7.62 5.91c4.45-4.11 7.14-10.16 7.14-17.56z" transform="translate(0 0) scale(.9)"/><path fill="#FBBC05" d="M10.53 28.59A14.4 14.4 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.2A23.9 23.9 0 0 0 0 24c0 3.89.93 7.58 2.56 10.78l7.97-6.19z" transform="translate(0 2) scale(.9)"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.9-5.79l-7.62-5.91c-2.12 1.42-4.84 2.27-8.28 2.27-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.2C6.51 42.62 14.62 48 24 48z" transform="translate(0 0) scale(.9)"/></svg><span>Continue with Google</span><span class="button-arrow">→</span></button>
+                <div class="secure-note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 1 1 8 0v3"/></svg>Secure sign-in powered by Google</div>
+            </div>
+            <footer>By continuing, you connect your Google account to Mailmind.<br><span>Sign-in enables the Gmail read and send features.</span></footer>
+        </section>
     </main>
-
     <script src="js/login.js"></script>
 </body>
 </html>

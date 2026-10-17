@@ -95,6 +95,9 @@ const logoutBtn =
 const copyReplyBtn =
     document.getElementById("copyReplyBtn");
 
+const retryActionItemsBtn =
+    document.getElementById("retryActionItemsBtn");
+
 
 // ==================================================
 // STATE
@@ -102,6 +105,8 @@ const copyReplyBtn =
 
 let currentEmail = null;
 let allEmails = [];
+let emailLoadSequence = 0;
+let activeAIRequests = 0;
 
 
 // ==================================================
@@ -127,11 +132,13 @@ function showToast(message) {
 // ==================================================
 
 function showAIThinking() {
+    activeAIRequests += 1;
     aiLoading.style.display = "block";
 }
 
 function hideAIThinking() {
-    aiLoading.style.display = "none";
+    activeAIRequests = Math.max(0, activeAIRequests - 1);
+    aiLoading.style.display = activeAIRequests ? "block" : "none";
 }
 
 
@@ -201,6 +208,11 @@ async function callAI(endpoint, body) {
             data = await response.json();
         } catch {
             throw new Error("Invalid server response.");
+        }
+
+        if (response.status === 401) {
+            redirectToLogin();
+            return null;
         }
 
         if (!response.ok || !data.success) {
@@ -300,6 +312,47 @@ function findMimePart(part, mimeType) {
 // BASIC HTML SANITIZATION
 // ==================================================
 
+function sanitizeEmailStyle(styleText) {
+    const allowedProperties = new Set([
+        "background-color", "border", "border-bottom", "border-collapse",
+        "border-color", "border-left", "border-radius", "border-right",
+        "border-spacing", "border-style", "border-top", "border-width",
+        "color", "display", "font-family", "font-size", "font-style",
+        "font-weight", "height", "line-height", "list-style-type", "margin",
+        "margin-bottom", "margin-left", "margin-right", "margin-top",
+        "max-height", "max-width", "min-height", "min-width", "padding",
+        "padding-bottom", "padding-left", "padding-right", "padding-top",
+        "table-layout", "text-align", "text-decoration", "text-transform",
+        "vertical-align", "white-space", "width", "word-break", "overflow-wrap",
+    ]);
+    const safeDeclarations = [];
+
+    for (const declaration of styleText.split(";")) {
+        const separator = declaration.indexOf(":");
+        if (separator < 1) continue;
+
+        const property = declaration.slice(0, separator).trim().toLowerCase();
+        const value = declaration.slice(separator + 1).trim();
+
+        if (
+            !allowedProperties.has(property) ||
+            !value ||
+            /[\\{}<>]/.test(value) ||
+            /url\s*\(|expression\s*\(|@import|-moz-binding|behavior\s*:/i.test(value)
+        ) {
+            continue;
+        }
+
+        if (property === "display" && !/^(inline|block|inline-block|table|table-row|table-cell|table-row-group|table-header-group|table-footer-group|list-item)$/i.test(value)) {
+            continue;
+        }
+
+        safeDeclarations.push(`${property}: ${value}`);
+    }
+
+    return safeDeclarations.join("; ");
+}
+
 function sanitizeEmailHTML(html) {
     const parser = new DOMParser();
 
@@ -311,7 +364,7 @@ function sanitizeEmailHTML(html) {
     // Remove dangerous elements.
     documentFragment
         .querySelectorAll(
-            "script, iframe, object, embed, form, link, meta, style"
+            "script, iframe, object, embed, form, link, meta, style, svg, math, base"
         )
         .forEach((element) => element.remove());
 
@@ -320,8 +373,38 @@ function sanitizeEmailHTML(html) {
         .querySelectorAll("*")
         .forEach((element) => {
             [...element.attributes].forEach((attribute) => {
-                if (attribute.name.toLowerCase().startsWith("on")) {
+                const name = attribute.name.toLowerCase();
+                const value = attribute.value.trim();
+
+                if (
+                    name.startsWith("on") ||
+                    name === "srcset" ||
+                    name === "formaction" ||
+                    name === "xlink:href"
+                ) {
                     element.removeAttribute(attribute.name);
+                    return;
+                }
+
+                if (name === "style") {
+                    const safeStyle = sanitizeEmailStyle(value);
+                    if (safeStyle) {
+                        element.setAttribute("style", safeStyle);
+                    } else {
+                        element.removeAttribute("style");
+                    }
+                    return;
+                }
+
+                if (["href", "src", "action", "poster"].includes(name)) {
+                    // Avoid loading remote email images, which can disclose
+                    // when and where the message was opened.
+                    const safeUrl = name === "src"
+                        ? /^data:image\/(?:png|gif|jpeg|webp);base64,/i.test(value)
+                        : /^(https?:|mailto:|#)/i.test(value);
+                    if (!safeUrl) {
+                        element.removeAttribute(attribute.name);
+                    }
                 }
             });
         });
@@ -340,7 +423,8 @@ async function summarizeEmail() {
         return;
     }
 
-    setAIResult(summaryText, "✨ Generating summary...");
+    const requestSequence = emailLoadSequence;
+    setAIResult(summaryText, "Generating summary…");
 
     const result = await callAI(
         "/ai/summarize",
@@ -349,12 +433,13 @@ async function summarizeEmail() {
         }
     );
 
+    if (requestSequence !== emailLoadSequence) return;
     if (!result) {
-        setAIResult(summaryText, "Summary failed.");
+        setAIResult(summaryText, "Summary failed. Select Summarize to retry.");
         return;
     }
 
-    setAIResult(summaryText, result.summary);
+    setAIResult(summaryText, result.summary?.trim() || "No summary was returned. Select Summarize to retry.");
 }
 
 
@@ -368,9 +453,10 @@ async function generateDraftReply() {
         return;
     }
 
+    const requestSequence = emailLoadSequence;
     setAIResult(
         replySuggestion,
-        "✨ Generating AI reply..."
+        "Generating AI reply…"
     );
 
     const result = await callAI(
@@ -380,11 +466,17 @@ async function generateDraftReply() {
         }
     );
 
+    if (requestSequence !== emailLoadSequence) return;
     if (!result) {
         setAIResult(
             replySuggestion,
-            "Failed to generate reply."
+            "Reply generation failed. Select Draft reply to retry."
         );
+        return;
+    }
+
+    if (!result.reply?.trim()) {
+        setAIResult(replySuggestion, "No reply was returned. Select Draft reply to retry.");
         return;
     }
 
@@ -409,9 +501,10 @@ async function translateEmail() {
         return;
     }
 
+    const requestSequence = emailLoadSequence;
     setAIResult(
         translationResult,
-        "🌍 Translating email..."
+        "Translating email…"
     );
 
     const result = await callAI(
@@ -422,17 +515,18 @@ async function translateEmail() {
         }
     );
 
+    if (requestSequence !== emailLoadSequence) return;
     if (!result) {
         setAIResult(
             translationResult,
-            "Translation failed."
+            "Translation failed. Select Translate to retry."
         );
         return;
     }
 
     setAIResult(
         translationResult,
-        result.translation
+        result.translation?.trim() || "No translation was returned. Select Translate to retry."
     );
 }
 
@@ -447,9 +541,10 @@ async function improveTone() {
         return;
     }
 
+    const requestSequence = emailLoadSequence;
     setAIResult(
         toneResult,
-        "✨ Improving tone..."
+        "Improving tone…"
     );
 
     const result = await callAI(
@@ -460,17 +555,18 @@ async function improveTone() {
         }
     );
 
+    if (requestSequence !== emailLoadSequence) return;
     if (!result) {
         setAIResult(
             toneResult,
-            "Failed to improve tone."
+            "Tone improvement failed. Select Improve tone to retry."
         );
         return;
     }
 
     setAIResult(
         toneResult,
-        result.improved
+        result.improved?.trim() || "No revised text was returned. Select Improve tone to retry."
     );
 }
 
@@ -484,9 +580,10 @@ async function extractActionItems() {
         return;
     }
 
+    const requestSequence = emailLoadSequence;
     setAIResult(
         actionItems,
-        "🔍 Extracting action items..."
+        "Extracting action items…"
     );
 
     const result = await callAI(
@@ -496,18 +593,21 @@ async function extractActionItems() {
         }
     );
 
+    if (requestSequence !== emailLoadSequence) return;
     if (!result) {
         setAIResult(
             actionItems,
-            "Unable to extract action items."
+            "Unable to extract action items. Use Retry to try again."
         );
+        retryActionItemsBtn.hidden = false;
         return;
     }
 
     setAIResult(
         actionItems,
-        result.actions
+        result.actions?.trim() || "No action items found."
     );
+    retryActionItemsBtn.hidden = true;
 }
 
 
@@ -542,7 +642,7 @@ async function generateComposeEmail() {
             return;
         }
 
-        composeBody.value = result.body;
+        composeBody.value = result.body?.trim() || "No draft was returned. Select Generate Email to retry.";
     } finally {
         generateComposeBtn.disabled = false;
         generateComposeBtn.textContent =
@@ -586,6 +686,11 @@ async function sendComposeEmail() {
         );
 
         const data = await response.json();
+
+        if (response.status === 401) {
+            redirectToLogin();
+            return;
+        }
 
         if (!response.ok || !data.success) {
             showToast(
@@ -862,6 +967,17 @@ function showEmptyInbox() {
 // ==================================================
 
 async function loadEmail(id) {
+    const requestSequence = ++emailLoadSequence;
+    currentEmail = null;
+    setAIResult(summaryText, "Select Summarize to generate a summary.");
+    setAIResult(replySuggestion, "A thoughtful reply draft will appear here.");
+    setAIResult(translationResult, "Select Translate to translate this email.");
+    setAIResult(toneResult, "Select Improve tone to revise this email.");
+    setAIResult(actionItems, "Loading action items…");
+    retryActionItemsBtn.hidden = true;
+    replySection.style.display = "none";
+    replyText.value = "";
+
     try {
         const response = await fetch(
             `${API_BASE_URL}/gmail/email/${id}`,
@@ -871,6 +987,8 @@ async function loadEmail(id) {
         );
 
         const data = await response.json();
+
+        if (requestSequence !== emailLoadSequence) return;
 
         if (response.status === 401) {
             redirectToLogin();
@@ -956,35 +1074,6 @@ async function loadEmail(id) {
                 "No readable email content.";
         }
 
-        // Reset AI results.
-        setAIResult(
-            summaryText,
-            "Select 'Summarize' to generate AI summary."
-        );
-
-        setAIResult(
-            replySuggestion,
-            "Generate an AI draft reply."
-        );
-
-        setAIResult(
-            translationResult,
-            "Translate this email."
-        );
-
-        setAIResult(
-            toneResult,
-            "Improve writing style."
-        );
-
-        setAIResult(
-            actionItems,
-            "Extracting action items..."
-        );
-
-        replySection.style.display = "none";
-        replyText.value = "";
-
         const sender =
             from.split("<")[0].trim() ||
             "Unknown";
@@ -1006,6 +1095,7 @@ async function loadEmail(id) {
          */
         await extractActionItems();
     } catch (error) {
+        if (requestSequence !== emailLoadSequence) return;
         console.error(
             "Email viewer error:",
             error
@@ -1043,6 +1133,18 @@ async function sendReply() {
                 header.name.toLowerCase() === "subject"
         )?.value || "";
 
+    const inReplyTo =
+        headers.find(
+            (header) =>
+                header.name.toLowerCase() === "message-id"
+        )?.value || "";
+
+    const references =
+        headers.find(
+            (header) =>
+                header.name.toLowerCase() === "references"
+        )?.value || "";
+
     const threadId =
         currentEmail.threadId;
 
@@ -1054,7 +1156,7 @@ async function sendReply() {
         return;
     }
 
-    if (!to || !threadId) {
+    if (!to || !threadId || !inReplyTo) {
         showToast(
             "❌ Unable to determine reply details."
         );
@@ -1078,6 +1180,8 @@ async function sendReply() {
                     to,
                     subject,
                     message,
+                    inReplyTo,
+                    references,
                 }),
             }
         );
@@ -1324,6 +1428,11 @@ logoutBtn.addEventListener(
 copyReplyBtn.addEventListener(
     "click",
     copyReply
+);
+
+retryActionItemsBtn.addEventListener(
+    "click",
+    extractActionItems
 );
 
 

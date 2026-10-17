@@ -1,5 +1,5 @@
 const express = require("express");
-const passport = require("passport");
+const requireAuth = require("../middleware/requireAuth");
 
 const {
     summarize,
@@ -18,7 +18,7 @@ const router = express.Router();
 
 router.post(
     "/summarize",
-    passport.authenticate("session"),
+    requireAuth,
     summarize
 );
 
@@ -28,7 +28,7 @@ router.post(
 
 router.post(
     "/draft-reply",
-    passport.authenticate("session"),
+    requireAuth,
     draftReply
 );
 
@@ -38,7 +38,7 @@ router.post(
 
 router.post(
     "/action-items",
-    passport.authenticate("session"),
+    requireAuth,
     actionItems
 );
 
@@ -48,7 +48,7 @@ router.post(
 
 router.post(
     "/translate",
-    passport.authenticate("session"),
+    requireAuth,
     translate
 );
 
@@ -58,7 +58,7 @@ router.post(
 
 router.post(
     "/improve-tone",
-    passport.authenticate("session"),
+    requireAuth,
     tone
 );
 
@@ -68,7 +68,7 @@ router.post(
 
 router.post(
     "/compose",
-    passport.authenticate("session"),
+    requireAuth,
     compose
 );
 

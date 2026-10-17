@@ -93,12 +93,14 @@ const sendReply = async (req, res) => {
             to,
             subject,
             message,
+            inReplyTo,
+            references,
         } = req.body;
 
-        if (!threadId || !to || !subject || !message) {
+        if (!threadId || !to || !subject || !message || !inReplyTo) {
             return res.status(400).json({
                 success: false,
-                message: "Thread ID, recipient, subject, and message are required",
+                message: "Thread ID, recipient, subject, message, and reply headers are required",
             });
         }
 
@@ -107,7 +109,9 @@ const sendReply = async (req, res) => {
             threadId,
             to,
             subject,
-            message
+            message,
+            inReplyTo,
+            references
         );
 
         return res.status(200).json({

@@ -2,6 +2,7 @@ const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 
 const User = require("../models/User");
+const { writeGoogleTokens } = require("../services/userTokenService");
 
 // --------------------------------------------------
 // Validate Google OAuth configuration
@@ -29,6 +30,7 @@ passport.use(
             clientID: process.env.GOOGLE_CLIENT_ID,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET,
             callbackURL: process.env.GOOGLE_CALLBACK_URL,
+            state: true,
         },
 
         async (accessToken, refreshToken, profile, done) => {
@@ -45,21 +47,26 @@ passport.use(
 
                 let user = await User.findOne({
                     googleId: profile.id,
-                });
+                }).select(
+                    "+accessToken +refreshToken +accessTokenEncrypted +refreshTokenEncrypted"
+                );
 
                 // ----------------------------------------------
                 // Create new user
                 // ----------------------------------------------
 
                 if (!user) {
-                    user = await User.create({
+                    user = new User({
                         googleId: profile.id,
                         name: profile.displayName,
                         email,
                         profilePicture,
+                    });
+                    writeGoogleTokens(user, {
                         accessToken,
                         refreshToken: refreshToken || null,
                     });
+                    await user.save();
                 }
 
                 // ----------------------------------------------
@@ -70,13 +77,12 @@ passport.use(
                     user.name = profile.displayName;
                     user.email = email;
                     user.profilePicture = profilePicture;
-                    user.accessToken = accessToken;
-
                     // Google may not return a refresh token
                     // on every login. Preserve the existing one.
-                    if (refreshToken) {
-                        user.refreshToken = refreshToken;
-                    }
+                    writeGoogleTokens(user, {
+                        accessToken,
+                        ...(refreshToken ? { refreshToken } : {}),
+                    });
 
                     await user.save();
                 }
@@ -104,7 +110,9 @@ passport.serializeUser((user, done) => {
 
 passport.deserializeUser(async (id, done) => {
     try {
-        const user = await User.findById(id);
+        const user = await User.findById(id).select(
+            "+accessToken +refreshToken +accessTokenEncrypted +refreshTokenEncrypted"
+        );
 
         if (!user) {
             return done(null, false);
